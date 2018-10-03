@@ -136,7 +136,33 @@ def process_productivity_score_today(token):
 			% (time_logged, productivity_score))
 
 def plot_productivity_today_by_hour(token):
-	pass
+	"""Plots per hour: time logged and productivity score"""
+
+	params = {
+		"key": token,
+		"format": "json",
+		"perspective": "interval",
+		"resolution_time": "hour",
+		"restrict_kind": "efficiency"
+	}
+
+	r = requests.get(API_URL, params=params)
+	today = create_dataframe(r.json())
+
+	#plt.bar('Date', 'Efficiency (percent)', data=today)
+	#plt.bar('Date', 'Time', data=today)
+	#plt.legend(['Efficiency', 'Logged time'], loc='upper left')
+	#plt.show()
+
+	fig, ax = plt.subplots()
+
+	efficiency = ax.bar('Date', 'Efficiency (percent)', data=today, label="Efficiency")
+	time = ax.bar('Date', 'Time', data=today, label="Time Logged")
+	ax.legend()
+
+	plt.show()
+
+	#TODO: pre-process date properly + scale both bars as percentage (or group both graphs)
 
 def main():
 
@@ -148,10 +174,10 @@ def main():
 		explore_data(token)
 		quit()
 
-	process_entertainment_time_today(token)
-	process_development_time_today(token)
-	process_productivity_score_today(token)
-	#plot_productivity_today_by_hour(token)
+	#process_entertainment_time_today(token)
+	#process_development_time_today(token)
+	#process_productivity_score_today(token)
+	plot_productivity_today_by_hour(token)
 
 if __name__ == "__main__":
 	main()
