@@ -8,26 +8,41 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 API_URL = "https://www.rescuetime.com/anapi/data"
-LIMIT_ENTERTAINMENT_HOURS = 0
+LIMIT_ENTERTAINMENT_MINUTES = 0
 EXPLORE=False
 
-def send_notification(threshold, current_value):
-	# testing sending a desktop notification
+def send_notification(current_value, threshold):
+	"""Sends a desktop notification on linix machines, libnotify-tools has to be installed"""
 	# icons' spec: https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
 	p = subprocess.call(["notify-send", "RescueTime Alert", "Ooops, you've spent %d minutes on Entertainment today. Close Netflix and get your lazy ass to surf!" % current_value, "--icon=weather-severe-alert"])
 
-def plot_time_category(data):
-	# testing some visualizations
-	df = pd.DataFrame(data['rows'], columns=data['row_headers'])
-	cleaned = df.drop(columns=["Rank", "Number of People"])
-	cleaned.columns = ["Time", "Category"]
-	# converting to minutes for better readability
-	cleaned["Time"] = cleaned["Time"].apply(lambda x: int(x/60))
-	print(cleaned)
-	cleaned.plot.bar(x="Category", y="Time")
+def plot_df(data, x, y):
+
+	data.plot.bar(x=x, y=y)
 	plt.show()
 
+def create_dataframe(data):
+	"""Creates pandas.DataFrame from the response from Rescuetime API
+
+	Creates a DataFrame and converts Time from seconds to minutes
+
+	Args:
+		data: (dict) response from RescueTime API in json
+
+	Returns:
+		pandas.DataFrame
+	"""
+
+	df = pd.DataFrame(data['rows'], columns=data['row_headers'])
+	df.rename(columns={"Time Spent (seconds)": "Time"}, inplace=True)
+	df["Time"] = df["Time"].apply(lambda x: int(x/60))
+	print(df)
+
+	return df
+
 def explore_data(token):
+	"""Sends an API request and displays + plots the data"""
+
 	params = {
 		"key": token,
 		"format": "json",
@@ -41,13 +56,17 @@ def explore_data(token):
 	}
 
 	r = requests.get(API_URL, params=params)
-	data = r.json()
-	print(data)
-	df = pd.DataFrame(data['rows'], columns=data['row_headers'])
-	print(df)
+	today = create_dataframe(r.json())
 
 def process_entertainment_time_today(token):
-	# looking for entertainment in raw response
+	"""Compares time spent on Entertainment with the limit
+
+	Fetches data for today, finds time spent on Entertainment and displays a Desktop notification
+
+	Args:
+		token: (str) RescueTime API token
+
+	"""
 
 	params = {
 		"key": token,
@@ -57,16 +76,16 @@ def process_entertainment_time_today(token):
 	}
 
 	r = requests.get(API_URL, params=params)
-	today = r.json()
 
-	plot_time_category(today)
+	today = create_dataframe(r.json())
 
-	for row in today['rows']:
-		if "Entertainment" in row:
-			# converting seconds to hours
-			current_value_hours = row[1]/60/60
-			if current_value_hours > LIMIT_ENTERTAINMENT_HOURS:
-				send_notification(LIMIT_ENTERTAINMENT_HOURS, current_value_hours*60)
+	plot_df(today, 'Category', 'Time')
+
+	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
+	time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
+
+	if time_spent_entertainment > LIMIT_ENTERTAINMENT_MINUTES:
+		send_notification(time_spent_entertainment, LIMIT_ENTERTAINMENT_MINUTES)
 
 def main():
 
