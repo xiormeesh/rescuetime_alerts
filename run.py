@@ -9,12 +9,13 @@ import pandas as pd
 
 API_URL = "https://www.rescuetime.com/anapi/data"
 LIMIT_ENTERTAINMENT_MINUTES = 0
+GOAL_DEVELOPMENT_MINUTES = 180
 EXPLORE=False
 
-def send_notification(current_value, threshold):
+def send_notification(message):
 	"""Sends a desktop notification on linix machines, libnotify-tools has to be installed"""
 	# icons' spec: https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
-	p = subprocess.call(["notify-send", "RescueTime Alert", "Ooops, you've spent %d minutes on Entertainment today. Close Netflix and get your lazy ass to surf!" % current_value, "--icon=weather-severe-alert"])
+	p = subprocess.call(["notify-send", "RescueTime Alert", message, "--icon=weather-severe-alert"])
 
 def plot_df(data, x, y):
 
@@ -43,16 +44,17 @@ def create_dataframe(data):
 def explore_data(token):
 	"""Sends an API request and displays + plots the data"""
 
+	# https://www.rescuetime.com/anapi/setup/documentation#analytic-api-reference
 	params = {
 		"key": token,
 		"format": "json",
 		"perspective": "interval", # interval|rank (default)
-		"resolution_time": "week", # minute|hour|day|week|month (works only for perspective=interval)
-		"restrict_kind": "category", # overview|category|activity|document|efficiency|productivity
+		"resolution_time": "day", # minute|hour|day|week|month (works only for perspective=interval)
+		"restrict_kind": "productivity", # overview|category|activity|document|efficiency|productivity
 		# if not restrict_time is provided, API returns log for the current day
-		"restrict_begin": "2018-09-20",
+		#"restrict_begin": "2018-09-20",
 		# "restrict_end": "2018-09-29",
-		"restrict_thing": "Uncategorized"
+		#"restrict_thing": "Uncategorized"
 	}
 
 	r = requests.get(API_URL, params=params)
@@ -79,13 +81,62 @@ def process_entertainment_time_today(token):
 
 	today = create_dataframe(r.json())
 
-	plot_df(today, 'Category', 'Time')
+	#plot_df(today, 'Category', 'Time')
 
 	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
 	time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
 
 	if time_spent_entertainment > LIMIT_ENTERTAINMENT_MINUTES:
-		send_notification(time_spent_entertainment, LIMIT_ENTERTAINMENT_MINUTES)
+		send_notification("Ooops, you've spent %d out of %d minutes on Entertainment today." \
+			"Close Netflix and get your lazy ass to surf!"
+			% (time_spent_entertainment, LIMIT_ENTERTAINMENT_MINUTES))
+
+def process_development_time_today(token):
+	# intentionally copying pre-processing response for now to figure out the patterns
+	# to improve in the future, latest version of this logic will be in process_entertainment_time_today()
+
+	params = {
+		"key": token,
+		"format": "json",
+		"perspective": "rank",
+		"restrict_kind": "overview"
+	}
+
+	r = requests.get(API_URL, params=params)
+
+	today = create_dataframe(r.json())
+
+	#plot_df(today, 'Category', 'Time')
+
+	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
+	time_spent_development = today.loc[today['Category'] == 'Software Development', ['Time']].iat[0,0]
+
+	if time_spent_development < GOAL_DEVELOPMENT_MINUTES:
+		send_notification("You've spent %d minutes so far, your current goal for dev is %d minutes."
+			% (time_spent_development, GOAL_DEVELOPMENT_MINUTES))
+
+def process_productivity_score_today(token):
+	"""Retrives time logged and productivity score"""
+
+	params = {
+		"key": token,
+		"format": "json",
+		"perspective": "interval",
+		"resolution_time": "day",
+		"restrict_kind": "efficiency"
+	}
+
+	r = requests.get(API_URL, params=params)
+	today = create_dataframe(r.json())
+
+	time_logged = today.at[0, "Time"]
+	productivity_score = today.at[0, "Efficiency (percent)"]
+	
+	send_notification("You've logged %d minutes today, you are %d percent productive."
+			% (time_logged, productivity_score))
+
+def plot_productivity_today_by_hour(token):
+	pass
 
 def main():
 
@@ -98,6 +149,9 @@ def main():
 		quit()
 
 	process_entertainment_time_today(token)
+	process_development_time_today(token)
+	process_productivity_score_today(token)
+	#plot_productivity_today_by_hour(token)
 
 if __name__ == "__main__":
 	main()
