@@ -10,6 +10,7 @@ import pandas as pd
 API_URL = "https://www.rescuetime.com/anapi/data"
 LIMIT_ENTERTAINMENT_MINUTES = 0
 GOAL_DEVELOPMENT_MINUTES = 180
+GOAL_PRODUCTIVE_MINUTES = 300
 EXPLORE=False
 
 def send_notification(message):
@@ -87,7 +88,7 @@ def process_entertainment_time_today(token):
 	time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
 
 	if time_spent_entertainment > LIMIT_ENTERTAINMENT_MINUTES:
-		send_notification("Ooops, you've spent %d out of %d minutes on Entertainment today." \
+		send_notification("Ooops, you've spent %d out of %d minutes on Entertainment today. " \
 			"Close Netflix and get your lazy ass to surf!"
 			% (time_spent_entertainment, LIMIT_ENTERTAINMENT_MINUTES))
 
@@ -112,8 +113,8 @@ def process_development_time_today(token):
 	time_spent_development = today.loc[today['Category'] == 'Software Development', ['Time']].iat[0,0]
 
 	if time_spent_development < GOAL_DEVELOPMENT_MINUTES:
-		send_notification("You've spent %d minutes so far, your current goal for dev is %d minutes."
-			% (time_spent_development, GOAL_DEVELOPMENT_MINUTES))
+		send_notification("You worked hard for %d minutes so far, your current goal is %d minutes. %d more to go!"
+			% (time_spent_development, GOAL_DEVELOPMENT_MINUTES, GOAL_DEVELOPMENT_MINUTES-time_spent_development))
 
 def process_productivity_score_today(token):
 	"""Retrives time logged and productivity score"""
@@ -131,9 +132,17 @@ def process_productivity_score_today(token):
 
 	time_logged = today.at[0, "Time"]
 	productivity_score = today.at[0, "Efficiency (percent)"]
-	
-	send_notification("You've logged %d minutes today, you are %d percent productive."
-			% (time_logged, productivity_score))
+
+	params['restrict_kind'] = "productivity"
+	r = requests.get(API_URL, params=params)
+	today = create_dataframe(r.json())
+
+	very_productive_min = today.loc[today['Productivity'] == 2, ['Time']].iat[0,0]
+	productive_min = today.loc[today['Productivity'] == 1, ['Time']].iat[0,0]
+
+	send_notification("You are %d percent productive so far! \n%d minutes logged,\n" \
+		"%d minutes very productive ,\n%d minutes productive."
+		% (productivity_score, time_logged, very_productive_min, productive_min))
 
 def plot_productivity_today_by_hour(token):
 	"""Plots per hour: time logged and productivity score"""
@@ -174,10 +183,10 @@ def main():
 		explore_data(token)
 		quit()
 
-	#process_entertainment_time_today(token)
-	#process_development_time_today(token)
-	#process_productivity_score_today(token)
-	plot_productivity_today_by_hour(token)
+	process_entertainment_time_today(token)
+	process_development_time_today(token)
+	process_productivity_score_today(token)
+	#plot_productivity_today_by_hour(token)
 
 if __name__ == "__main__":
 	main()
