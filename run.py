@@ -16,7 +16,7 @@ EXPLORE=False
 def send_notification(message):
 	"""Sends a desktop notification on linix machines, libnotify-tools has to be installed"""
 	# icons' spec: https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
-	p = subprocess.call(["notify-send", "RescueTime Alert", message, "--icon=weather-severe-alert"])
+	p = subprocess.call(["/usr/bin/notify-send", "RescueTime Alert", message, "--icon=weather-severe-alert"])
 
 def plot_df(data, x, y):
 
@@ -141,7 +141,7 @@ def process_productivity_score_today(token):
 	productive_min = today.loc[today['Productivity'] == 1, ['Time']].iat[0,0]
 
 	send_notification("You are %d percent productive so far! \n%d minutes logged,\n" \
-		"%d minutes very productive ,\n%d minutes productive."
+		"%d minutes very productive,\n%d minutes productive."
 		% (productivity_score, time_logged, very_productive_min, productive_min))
 
 def plot_productivity_today_by_hour(token):
