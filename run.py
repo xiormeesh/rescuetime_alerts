@@ -85,7 +85,10 @@ def process_entertainment_time_today(token):
 	#plot_df(today, 'Category', 'Time')
 
 	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
-	time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
+	try:
+		time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
+	except IndexError:
+		return
 
 	if time_spent_entertainment > LIMIT_ENTERTAINMENT_MINUTES:
 		send_notification("Ooops, you've spent %d out of %d minutes on Entertainment today. " \
@@ -110,7 +113,10 @@ def process_development_time_today(token):
 	#plot_df(today, 'Category', 'Time')
 
 	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
-	time_spent_development = today.loc[today['Category'] == 'Software Development', ['Time']].iat[0,0]
+	try:
+		time_spent_development = today.loc[today['Category'] == 'Software Development', ['Time']].iat[0,0]
+	except IndexError:
+		return
 
 	if time_spent_development < GOAL_DEVELOPMENT_MINUTES:
 		send_notification("You worked hard for %d minutes so far, your current goal is %d minutes. %d more to go!"
