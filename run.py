@@ -8,10 +8,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 API_URL = "https://www.rescuetime.com/anapi/data"
-LIMIT_ENTERTAINMENT_MINUTES = 0
-GOAL_DEVELOPMENT_MINUTES = 180
-GOAL_PRODUCTIVE_MINUTES = 300
-EXPLORE=False
 
 def send_notification(message):
 	"""Sends a desktop notification on linix machines, libnotify-tools has to be installed"""
@@ -61,67 +57,6 @@ def explore_data(token):
 	r = requests.get(API_URL, params=params)
 	today = create_dataframe(r.json())
 
-def process_entertainment_time_today(token):
-	"""Compares time spent on Entertainment with the limit
-
-	Fetches data for today, finds time spent on Entertainment and displays a Desktop notification
-
-	Args:
-		token: (str) RescueTime API token
-
-	"""
-
-	params = {
-		"key": token,
-		"format": "json",
-		"perspective": "rank",
-		"restrict_kind": "overview"
-	}
-
-	r = requests.get(API_URL, params=params)
-
-	today = create_dataframe(r.json())
-
-	#plot_df(today, 'Category', 'Time')
-
-	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
-	try:
-		time_spent_entertainment = today.loc[today['Category'] == 'Entertainment', ['Time']].iat[0,0]
-	except IndexError:
-		return
-
-	if time_spent_entertainment > LIMIT_ENTERTAINMENT_MINUTES:
-		send_notification("Ooops, you've spent %d out of %d minutes on Entertainment today. " \
-			"Close Netflix and get your lazy ass to surf!"
-			% (time_spent_entertainment, LIMIT_ENTERTAINMENT_MINUTES))
-
-def process_development_time_today(token):
-	# intentionally copying pre-processing response for now to figure out the patterns
-	# to improve in the future, latest version of this logic will be in process_entertainment_time_today()
-
-	params = {
-		"key": token,
-		"format": "json",
-		"perspective": "rank",
-		"restrict_kind": "overview"
-	}
-
-	r = requests.get(API_URL, params=params)
-
-	today = create_dataframe(r.json())
-
-	#plot_df(today, 'Category', 'Time')
-
-	# loc() for finding the cell, iat() for casting DataFrame to numpy.int64
-	try:
-		time_spent_development = today.loc[today['Category'] == 'Software Development', ['Time']].iat[0,0]
-	except IndexError:
-		return
-
-	if time_spent_development < GOAL_DEVELOPMENT_MINUTES:
-		send_notification("You worked hard for %d minutes so far, your current goal is %d minutes. %d more to go!"
-			% (time_spent_development, GOAL_DEVELOPMENT_MINUTES, GOAL_DEVELOPMENT_MINUTES-time_spent_development))
-
 def process_productivity_score_today(token):
 	"""Retrives time logged and productivity score"""
 
@@ -143,8 +78,14 @@ def process_productivity_score_today(token):
 	r = requests.get(API_URL, params=params)
 	today = create_dataframe(r.json())
 
-	very_productive_min = today.loc[today['Productivity'] == 2, ['Time']].iat[0,0]
-	productive_min = today.loc[today['Productivity'] == 1, ['Time']].iat[0,0]
+	try:
+		very_productive_min = today.loc[today['Productivity'] == 2, ['Time']].iat[0,0]
+	except IndexError:
+		very_productive_min = 0
+	try:
+		productive_min = today.loc[today['Productivity'] == 1, ['Time']].iat[0,0]
+	except IndexError:
+		productive_min = 0
 
 	send_notification("You are %d percent productive so far! \n%d minutes logged,\n" \
 		"%d minutes very productive,\n%d minutes productive."
@@ -183,15 +124,57 @@ def main():
 
 	with open('config.json', 'r') as file:
 		config = json.loads(file.read())
-		token = config['API_TOKEN']
 
-	if EXPLORE:
+		token = config['API_TOKEN']
+		doExplore = config['EXPLORE']
+		doPlot = config['PLOT']
+
+	if doExplore:
 		explore_data(token)
 		quit()
 
-	process_entertainment_time_today(token)
-	process_development_time_today(token)
-	process_productivity_score_today(token)
+	with open('tasks.json', 'r') as file:
+		tasks = json.loads(file.read())
+
+	for task in tasks:
+		print(task)
+		params = {
+			"key": token,
+			"format": "json"
+		}
+		
+		print(type(["goal", "limit"]))
+
+		# parse task
+		if task["task_type"] in ["goal", "limit"]:
+			params["perspective"] = "rank"
+			params["restrict_kind"] = "overview"
+		print(params)
+
+		r = requests.get(API_URL, params=params)
+
+		today = create_dataframe(r.json())
+
+		if doPlot:
+			plot_df(today, 'Category', 'Time')
+
+		#find value
+		try:
+			time_spent = today.loc[today['Category'] == task['slice_name'], ['Time']].iat[0,0]
+		except IndexError:
+			return
+
+		# send notification
+		if task['task_type'] == 'limit':
+			if time_spent > task['minutes']:
+				send_notification("Ooops you've spent %d minutes out of %d limit on %s today." \
+					% (time_spent, task['minutes'], task['slice_name']))
+		elif task['task_type'] == 'goal':
+			if time_spent < task['minutes']:
+				send_notification("Work harder! You still have %d minutes out of %d goal ahead of you to work on %s" \
+					% (task['minutes'] - time_spent, task['minutes'], task['slice_name']))
+
+	# process_productivity_score_today(token)
 	#plot_productivity_today_by_hour(token)
 
 if __name__ == "__main__":
