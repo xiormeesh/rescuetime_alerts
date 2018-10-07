@@ -83,40 +83,6 @@ def explore_data(token):
 	r = requests.get(API_URL, params=params)
 	today = create_dataframe(r.json())
 
-def process_productivity_score_today(token):
-	"""Retrives time logged and productivity score"""
-
-	params = {
-		"key": token,
-		"format": "json",
-		"perspective": "interval",
-		"resolution_time": "day",
-		"restrict_kind": "efficiency"
-	}
-
-	r = requests.get(API_URL, params=params)
-	today = create_dataframe(r.json())
-
-	time_logged = today.at[0, "Time"]
-	productivity_score = today.at[0, "Efficiency (percent)"]
-
-	params['restrict_kind'] = "productivity"
-	r = requests.get(API_URL, params=params)
-	today = create_dataframe(r.json())
-
-	try:
-		very_productive_min = today.loc[today['Productivity'] == 2, ['Time']].iat[0,0]
-	except IndexError:
-		very_productive_min = 0
-	try:
-		productive_min = today.loc[today['Productivity'] == 1, ['Time']].iat[0,0]
-	except IndexError:
-		productive_min = 0
-
-	send_notification("You are %d percent productive so far! \n%d minutes logged,\n" \
-		"%d minutes very productive,\n%d minutes productive."
-		% (productivity_score, time_logged, very_productive_min, productive_min))
-
 def plot_productivity_today_by_hour(token):
 	"""Plots per hour: time logged and productivity score"""
 
