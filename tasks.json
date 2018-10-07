@@ -1,0 +1,16 @@
+[
+	{
+		"task_type": "limit",
+		"slice_name": "Entertainment",
+		"minutes": 0
+	},
+	{
+		"task_type": "goal",
+		"slice_name": "Software Development",
+		"minutes": 180
+	},
+	{
+		"task_type": "productivity",
+		"minutes": 300
+	}
+]
