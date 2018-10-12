@@ -95,7 +95,7 @@ def main():
 			process_productivity(config, task)
 
 	if config.doPlot:
-		plot_productivity_today_by_hour(token)
+		plot_productivity_today_by_hour(config)
 
 if __name__ == "__main__":
 	main()
