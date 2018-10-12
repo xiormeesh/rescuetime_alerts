@@ -9,8 +9,8 @@ import pandas as pd
 
 def send_notification(message):
 	"""Sends a desktop notification on linix machines, libnotify-tools has to be installed"""
-	# icons' spec: https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
-	p = subprocess.call(['/usr/bin/notify-send', "RescueTime Alert", message, '--icon=weather-severe-alert'])
+	# TODO: check if I can use a custom rescuetime item
+	p = subprocess.call(['/usr/bin/notify-send', "RescueTime Alert", message])
 
 def plot_df(data, x, y):
 	data.plot.bar(x=x, y=y)

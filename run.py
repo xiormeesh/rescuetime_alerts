@@ -1,5 +1,13 @@
 #!/usr/bin/python3
 
+# remaining features: 
+# make it a service instead of on-demand/cron
+# add logging
+# explore data to see if any other data can be used to evaluate performance
+# finish plotting of hourly productivity (+save the pic or find a way to show it)
+# weekly + monthly email reports
+# add documentation for project + tasks.json 
+
 import utils
 
 from config import Config
@@ -38,17 +46,15 @@ def process_category(config, task):
 
 def process_productivity(config, task):
 	today = utils.send_request(config, perspective="interval", resolution_time="day", restrict_kind="efficiency")
-	time_logged = today.at[0, "Time"]
 	productivity_score = today.at[0, "Efficiency (percent)"]
 
 	today = utils.send_request(config, perspective="interval", resolution_time="day", restrict_kind="productivity")
 	very_productive_min = utils.extract_from_cell(today, 'Time', 'Productivity', 2)
 	productive_min = utils.extract_from_cell(today, 'Time', 'Productivity', 1)
 
-	# TODO: use productivity goal, should sum(productive, very_productive)
-	utils.send_notification("You are %d percent productive so far! \n%d minutes logged,\n" \
-		"%d minutes very productive,\n%d minutes productive."
-		% (productivity_score, time_logged, very_productive_min, productive_min))
+	utils.send_notification("You are %d percent productive so far!\n" \
+		"You still have %d minutes out of %d goal ahead of you."
+		% (productivity_score, very_productive_min + productive_min, task['minutes']))
 
 def plot_productivity_today_by_hour(token):
 	"""Plots per hour: time logged and productivity score"""
