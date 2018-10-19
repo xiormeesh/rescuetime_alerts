@@ -54,7 +54,7 @@ def process_productivity(config, task):
 
 	utils.send_notification("You are %d percent productive so far!\n" \
 		"You still have %d minutes out of %d goal ahead of you."
-		% (productivity_score, very_productive_min + productive_min, task['minutes']))
+		% (productivity_score, task['minutes'] - (very_productive_min + productive_min), task['minutes']))
 
 def plot_productivity_today_by_hour(token):
 	"""Plots per hour: time logged and productivity score"""
