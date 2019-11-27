@@ -1,5 +1,7 @@
 # rescuetime_alerts
 
+**Deprecated, moving to a telegram bot**
+
 Pulls data from your RescueTime account and pushes desktop notfications (\*nix) according to configured rules.
 
 ### Prerequisites
